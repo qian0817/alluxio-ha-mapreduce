@@ -1,0 +1,54 @@
+version: "3"
+
+services:
+  master1:
+    image: alluxio/alluxio:2.6.0
+    environment:
+      ALLUXIO_JAVA_OPTS: '-Dalluxio.master.hostname=master1 -Dalluxio.master.embedded.journal.addresses=master1:19200,master2:19200,master3:19200'
+    volumes:
+      - ufs:/opt/alluxio/underFSStorage
+    command: master
+  master2:
+    image: alluxio/alluxio:2.6.0
+    environment:
+      ALLUXIO_JAVA_OPTS: '-Dalluxio.master.hostname=master2 -Dalluxio.master.embedded.journal.addresses=master1:19200,master2:19200,master3:19200'
+    volumes:
+      - ufs:/opt/alluxio/underFSStorage
+    command: master
+  master3:
+    image: alluxio/alluxio:2.6.0
+    environment:
+      ALLUXIO_JAVA_OPTS: '-Dalluxio.master.hostname=master3 -Dalluxio.master.embedded.journal.addresses=master1:19200,master2:19200,master3:19200'
+    volumes:
+      - ufs:/opt/alluxio/underFSStorage
+    command: master
+  worker:
+    image: alluxio/alluxio:2.6.0
+    shm_size: 1G
+    environment:
+        ALLUXIO_JAVA_OPTS: "-Dalluxio.worker.memory.size=1G -Dalluxio.master.embedded.journal.addresses=master1:19200,master2:19200,master3:19200"
+    volumes:
+      - ufs:/opt/alluxio/underFSStorage
+    command:
+      - worker
+  
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    volumes: 
+      - ./alluxio-2.6.0-client.jar:/etc/hadoop/alluxio-client.jar
+    env_file:
+      - ./hadoop.env
+
+  nodemanager:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager
+    environment:
+      SERVICE_PRECONDITION: "resourcemanager:8088"
+    volumes:  
+      - ./alluxio-2.6.0-client.jar:/etc/hadoop/alluxio-client.jar
+    env_file:
+      - ./hadoop.env
+  
+volumes:
+  ufs:
