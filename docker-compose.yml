@@ -2,31 +2,53 @@ version: "3"
 
 services:
   master1:
-    image: alluxio/alluxio:2.6.0
+    image: alluxio/alluxio:2.7.0
+    container_name: master1
     environment:
-      ALLUXIO_JAVA_OPTS: '-Dalluxio.master.hostname=master1 -Dalluxio.master.embedded.journal.addresses=master1:19200,master2:19200,master3:19200'
+      ALLUXIO_JAVA_OPTS: >
+        -Dalluxio.master.hostname=master1
+        -Dalluxio.master.embedded.journal.addresses=master1:19200,master2:19200,master3:19200
+        -Dalluxio.master.embedded.journal.election.timeout.min=500ms
+        -Dalluxio.master.embedded.journal.election.timeout.max=1s
+        -Dalluxio.security.authorization.permission.enabled=false
     volumes:
       - ufs:/opt/alluxio/underFSStorage
     command: master
   master2:
-    image: alluxio/alluxio:2.6.0
+    image: alluxio/alluxio:2.7.0
+    container_name: master2
     environment:
-      ALLUXIO_JAVA_OPTS: '-Dalluxio.master.hostname=master2 -Dalluxio.master.embedded.journal.addresses=master1:19200,master2:19200,master3:19200'
+      ALLUXIO_JAVA_OPTS: >
+        -Dalluxio.master.hostname=master2
+        -Dalluxio.master.embedded.journal.addresses=master1:19200,master2:19200,master3:19200
+        -Dalluxio.master.embedded.journal.election.timeout.min=500ms
+        -Dalluxio.master.embedded.journal.election.timeout.max=1s
+        -Dalluxio.security.authorization.permission.enabled=false
     volumes:
       - ufs:/opt/alluxio/underFSStorage
     command: master
   master3:
-    image: alluxio/alluxio:2.6.0
+    image: alluxio/alluxio:2.7.0
+    container_name: master3
     environment:
-      ALLUXIO_JAVA_OPTS: '-Dalluxio.master.hostname=master3 -Dalluxio.master.embedded.journal.addresses=master1:19200,master2:19200,master3:19200'
+      ALLUXIO_JAVA_OPTS: >
+        -Dalluxio.master.hostname=master3
+        -Dalluxio.master.embedded.journal.addresses=master1:19200,master2:19200,master3:19200
+        -Dalluxio.master.embedded.journal.election.timeout.min=500ms
+        -Dalluxio.master.embedded.journal.election.timeout.max=1s
+        -Dalluxio.security.authorization.permission.enabled=false
     volumes:
       - ufs:/opt/alluxio/underFSStorage
     command: master
   worker:
-    image: alluxio/alluxio:2.6.0
+    image: alluxio/alluxio:2.7.0
+    container_name: worker
     shm_size: 1G
     environment:
-        ALLUXIO_JAVA_OPTS: "-Dalluxio.worker.memory.size=1G -Dalluxio.master.embedded.journal.addresses=master1:19200,master2:19200,master3:19200"
+        ALLUXIO_JAVA_OPTS: >
+          -Dalluxio.worker.memory.size=1G
+          -Dalluxio.master.embedded.journal.addresses=master1:19200,master2:19200,master3:19200
+          -Dalluxio.security.authorization.permission.enabled=false
     volumes:
       - ufs:/opt/alluxio/underFSStorage
     command:
@@ -35,8 +57,10 @@ services:
   resourcemanager:
     image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
     container_name: resourcemanager
+    environment:
+      SERVICE_PRECONDITION: "master1:19998 master2:19998 master2:19998"
     volumes: 
-      - ./alluxio-2.6.0-client.jar:/etc/hadoop/alluxio-client.jar
+      - ./alluxio-client.jar:/etc/hadoop/alluxio-client.jar
     env_file:
       - ./hadoop.env
 
@@ -44,11 +68,20 @@ services:
     image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
     container_name: nodemanager
     environment:
-      SERVICE_PRECONDITION: "resourcemanager:8088"
+      SERVICE_PRECONDITION: "resourcemanager:8088 master1:19998 master2:19998 master2:19998"
     volumes:  
-      - ./alluxio-2.6.0-client.jar:/etc/hadoop/alluxio-client.jar
+      - ./alluxio-client.jar:/etc/hadoop/alluxio-client.jar
     env_file:
       - ./hadoop.env
   
+  historyserver:
+    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+    container_name: historyserver
+    volumes:  
+      - ./alluxio-client.jar:/etc/hadoop/alluxio-client.jar
+    environment:
+      SERVICE_PRECONDITION: "resourcemanager:8088 master1:19998 master2:19998 master2:19998"
+    env_file:
+      - ./hadoop.env
 volumes:
   ufs:
